@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="a7a7fe09-82e5-4e6d-afa8-7ff42806c71a" name="Changes" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="CopilotPersistence">
+    <persistenceIdMap>
+      <entry key="_C:/Users/LEUKEFACK CHRISTIAN/Downloads/terraform agri cicd/deploiement terraform infras agricole" value="3De8PdLEWA6qcbAu7QrpEzxqVBV" />
+    </persistenceIdMap>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="test" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;Wanderhin&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/Wanderhin/infras_agricam_terraform.git&quot;,
+    &quot;accountId&quot;: &quot;51bff8ab-693c-4f4f-b30c-85524c945840&quot;
+  }
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 3
+}</component>
+  <component name="ProjectId" id="3De8PdLEWA6qcbAu7QrpEzxqVBV" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "SONARLINT_PRECOMMIT_ANALYSIS": "true",
+    "dart.analysis.tool.window.visible": "false",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "C:/Users/KWITAT CARMELLE/Desktop/projet teraform",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "show.migrate.to.gradle.popup": "false",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\LEUKEFACK CHRISTIAN\Downloads\terraform agri cicd\deploiement terraform infras agricole" />
+    </key>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-9823dce3aa75-fdfe4dae3a2d-intellij.indexing.shared.core-IU-243.21565.193" />
+        <option value="bundled-js-predefined-d6986cc7102b-e768b9ed790e-JavaScript-IU-243.21565.193" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="a7a7fe09-82e5-4e6d-afa8-7ff42806c71a" name="Changes" comment="" />
+      <created>1778631154223</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1778631154223</updated>
+      <workItem from="1778631155895" duration="18885000" />
+      <workItem from="1778691814512" duration="1856000" />
+    </task>
+    <task id="LOCAL-00001" summary="initialisation de l'infras">
+      <option name="closed" value="true" />
+      <created>1778632151042</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1778632151043</updated>
+    </task>
+    <task id="LOCAL-00002" summary="correction de l'indentation avec la commande wsl terraform fmt -recursive">
+      <option name="closed" value="true" />
+      <created>1778635464446</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1778635464446</updated>
+    </task>
+    <task id="LOCAL-00003" summary="correction des erreur causer par checkov">
+      <option name="closed" value="true" />
+      <created>1778636653811</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1778636653811</updated>
+    </task>
+    <task id="LOCAL-00004" summary="correction des erreur causer par checkov">
+      <option name="closed" value="true" />
+      <created>1778636680770</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1778636680770</updated>
+    </task>
+    <task id="LOCAL-00005" summary="correction des erreur causer par checkov 2">
+      <option name="closed" value="true" />
+      <created>1778637103461</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1778637103461</updated>
+    </task>
+    <task id="LOCAL-00006" summary="correction des erreur causer par checkov 3">
+      <option name="closed" value="true" />
+      <created>1778637334040</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1778637334040</updated>
+    </task>
+    <task id="LOCAL-00007" summary="correction des varaible et secret dans github action">
+      <option name="closed" value="true" />
+      <created>1778637833954</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1778637833954</updated>
+    </task>
+    <task id="LOCAL-00008" summary="retrait du backend s3">
+      <option name="closed" value="true" />
+      <created>1778638334957</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1778638334957</updated>
+    </task>
+    <task id="LOCAL-00009" summary="retrait du backend s3">
+      <option name="closed" value="true" />
+      <created>1778638694920</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1778638694920</updated>
+    </task>
+    <task id="LOCAL-00010" summary="github.ref == 'refs/heads/main' modifier et mis a master">
+      <option name="closed" value="true" />
+      <created>1778640310927</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1778640310927</updated>
+    </task>
+    <task id="LOCAL-00011" summary="ajout de filter">
+      <option name="closed" value="true" />
+      <created>1778642287353</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1778642287353</updated>
+    </task>
+    <task id="LOCAL-00012" summary="retrait de exit_code ==2">
+      <option name="closed" value="true" />
+      <created>1778642830390</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1778642830390</updated>
+    </task>
+    <task id="LOCAL-00013" summary="verification de la connection ssh">
+      <option name="closed" value="true" />
+      <created>1778681866330</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1778681866330</updated>
+    </task>
+    <option name="localTasksCounter" value="14" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="initialisation de l'infras" />
+    <MESSAGE value="correction de l'indentation avec la commande wsl terraform fmt -recursive" />
+    <MESSAGE value="correction des erreur causer par checkov" />
+    <MESSAGE value="correction des erreur causer par checkov 2" />
+    <MESSAGE value="correction des erreur causer par checkov 3" />
+    <MESSAGE value="correction des varaible et secret dans github action" />
+    <MESSAGE value="retrait du backend s3" />
+    <MESSAGE value="github.ref == 'refs/heads/main' modifier et mis a master" />
+    <MESSAGE value="ajout de filter" />
+    <MESSAGE value="retrait de exit_code ==2" />
+    <MESSAGE value="verification de la connection ssh" />
+    <option name="LAST_COMMIT_MESSAGE" value="verification de la connection ssh" />
+  </component>
+  <component name="github-copilot-workspace">
+    <instructionFileLocations>
+      <option value=".github/instructions" />
+    </instructionFileLocations>
+    <promptFileLocations>
+      <option value=".github/prompts" />
+    </promptFileLocations>
+  </component>
+</project>
