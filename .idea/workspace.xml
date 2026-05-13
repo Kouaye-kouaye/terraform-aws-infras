@@ -4,7 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a7a7fe09-82e5-4e6d-afa8-7ff42806c71a" name="Changes" comment="" />
+    <list default="true" id="a7a7fe09-82e5-4e6d-afa8-7ff42806c71a" name="Changes" comment="pipeline ci cd terraform pour agricam">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.tf" beforeDir="false" afterPath="$PROJECT_DIR$/main.tf" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -29,12 +32,12 @@
     &quot;assignee&quot;: &quot;Wanderhin&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings">{
-  &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/Wanderhin/infras_agricam_terraform.git&quot;,
-    &quot;accountId&quot;: &quot;51bff8ab-693c-4f4f-b30c-85524c945840&quot;
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/carmelle2/terraform-aws-infras.git",
+    "accountId": "d049dc53-8891-48dd-9cc9-d5adcb8849e3"
   }
-}</component>
+}]]></component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 3
 }</component>
@@ -49,6 +52,7 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "SONARLINT_PRECOMMIT_ANALYSIS": "true",
     "dart.analysis.tool.window.visible": "false",
+    "git-widget-placeholder": "master",
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "C:/Users/KWITAT CARMELLE/Desktop/projet teraform",
     "node.js.detected.package.eslint": "true",
@@ -64,6 +68,19 @@
     <key name="CopyFile.RECENT_KEYS">
       <recent name="C:\Users\LEUKEFACK CHRISTIAN\Downloads\terraform agri cicd\deploiement terraform infras agricole" />
     </key>
+  </component>
+  <component name="RunManager">
+    <configuration default="true" type="JetRunConfigurationType">
+      <module name="deploiement terraform infras agricole" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="KotlinStandaloneScriptRunConfigurationType">
+      <module name="deploiement terraform infras agricole" />
+      <option name="filePath" />
+      <method v="2" />
+    </configuration>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
@@ -83,6 +100,7 @@
       <updated>1778631154223</updated>
       <workItem from="1778631155895" duration="18885000" />
       <workItem from="1778691814512" duration="1856000" />
+      <workItem from="1778694028517" duration="1411000" />
     </task>
     <task id="LOCAL-00001" summary="initialisation de l'infras">
       <option name="closed" value="true" />
@@ -188,7 +206,15 @@
       <option name="project" value="LOCAL" />
       <updated>1778681866330</updated>
     </task>
-    <option name="localTasksCounter" value="14" />
+    <task id="LOCAL-00014" summary="pipeline ci cd terraform pour agricam">
+      <option name="closed" value="true" />
+      <created>1778694110401</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1778694110401</updated>
+    </task>
+    <option name="localTasksCounter" value="15" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -206,7 +232,8 @@
     <MESSAGE value="ajout de filter" />
     <MESSAGE value="retrait de exit_code ==2" />
     <MESSAGE value="verification de la connection ssh" />
-    <option name="LAST_COMMIT_MESSAGE" value="verification de la connection ssh" />
+    <MESSAGE value="pipeline ci cd terraform pour agricam" />
+    <option name="LAST_COMMIT_MESSAGE" value="pipeline ci cd terraform pour agricam" />
   </component>
   <component name="github-copilot-workspace">
     <instructionFileLocations>
