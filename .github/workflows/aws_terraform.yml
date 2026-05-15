@@ -1,4 +1,4 @@
-name: "Infrastructure AgriCam avec Terraform CI/CD"
+name: "Infrastructure AgriCam CI/CD"
 
 on:
   push:
@@ -129,12 +129,11 @@ jobs:
           TF_VAR_ami_id:         ${{ secrets.TF_VAR_ami_id }}
           TF_VAR_ip_admin:       ${{ secrets.TF_VAR_ip_admin }}
           TF_VAR_ec2_public_key: ${{ secrets.EC2_PUBLIC_KEY }}
-          TF_VAR_environnement:  ${{ vars.TF_VAR_environnement }}
+          TF_VAR_environement:  ${{ vars.TF_VAR_environement }}
           TF_VAR_type_instance:  ${{ vars.TF_VAR_type_instance }}
           TF_VAR_aws_region:     ${{ vars.AWS_REGION }}
         run: |
           set +e
-
           terraform plan \
             -detailed-exitcode \
             -parallelism=10 \
@@ -145,18 +144,6 @@ jobs:
 
           echo "exitcode=$EXIT" >> $GITHUB_OUTPUT
 
-          set -e
-
-          if [ $EXIT -eq 0 ]; then
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ No changes"
-          elif [ $EXIT -eq 2 ]; then
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-            echo "✅ Changes detected"
-          else
-            cat plan.txt
-            exit 1
-          fi
 
           # Upload plan log
           cat plan.txt > plan-output.txt
