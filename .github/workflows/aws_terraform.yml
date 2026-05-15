@@ -1,267 +1,291 @@
-name: "Infrastructure AgriCam — Terraform CI/CD"
+name: "Infrastructure AgriCam avec Terraform CI/CD"
 
 on:
   push:
-    branches: [main, dev]
-
+    branches: [master, dev]
   pull_request:
-    branches: [main]
-
+    branches: [master]
   schedule:
     - cron: '0 2 * * *'
 
-env:
-  TF_VERSION: "1.7.5"
-  AWS_REGION: eu-north-1
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  TF_PLUGIN_CACHE_DIR: ~/.terraform.d/plugin-cache
-
 concurrency:
-  group: agricam-${{ github.ref }}
-  cancel-in-progress: true
+  group: "agricam-terraform-${{ github.ref }}"
+  cancel-in-progress: false
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+# ─────────────────────────────────────────────────────────────
+# JOB 1 — SCAN SECRETS
+# ─────────────────────────────────────────────────────────────
 jobs:
+  scan-secrets:
+    name: "Scan secrets AWS (Gitleaks)"
+    runs-on: ubuntu-latest
+    if: github.event_name != 'schedule'
 
-  # ─────────────────────────────
-  # 1. VALIDATION
-  # ─────────────────────────────
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─────────────────────────────────────────────────────────────
+  # JOB 2 — VALIDATION
+  # ─────────────────────────────────────────────────────────────
   validate:
+    name: "Format & Validation Terraform"
     runs-on: ubuntu-latest
+    needs: [scan-secrets]
+    if: github.event_name != 'schedule'
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
-      - name: Create Terraform plugin cache directory
-        run: mkdir -p ~/.terraform.d/plugin-cache
-
-      - name: Cache Terraform providers
-        uses: actions/cache@v4.2.3
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
-          path: ~/.terraform.d/plugin-cache
-          key: terraform-${{ runner.os }}-${{ hashFiles('**/*.tf') }}
-          restore-keys: |
-            terraform-${{ runner.os }}-
+          terraform_version: "~1.7.0"
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3.1.2
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false
+      - run: terraform validate
 
-      - name: Terraform Init
-        run: terraform init -backend=false -input=false -no-color
-
-      - name: Terraform Format Check
-        run: terraform fmt -check -recursive
-
-      - name: Terraform Validate
-        run: terraform validate
-
-
-  # ─────────────────────────────
-  # 2. SECURITY SCAN
-  # ─────────────────────────────
-  security:
+  # ─────────────────────────────────────────────────────────────
+  # JOB 3 — LINT
+  # ─────────────────────────────────────────────────────────────
+  lint:
+    name: "TFLint"
     runs-on: ubuntu-latest
-    needs: validate
+    needs: [validate]
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
-      - name: Run Checkov
-        uses: bridgecrewio/checkov-action@v12
+      - uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+
+      - run: tflint --init
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: tflint --format compact
+
+  # ─────────────────────────────────────────────────────────────
+  # JOB 4 — SECURITY
+  # ─────────────────────────────────────────────────────────────
+  security-scan:
+    name: "Checkov Security Scan"
+    runs-on: ubuntu-latest
+    needs: [validate]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: bridgecrewio/checkov-action@master
         with:
           directory: .
           framework: terraform
-          soft_fail: true
+          output_format: cli
+          soft_fail: false
 
-
-  # ─────────────────────────────
-  # 3. TERRAFORM PLAN
-  # ─────────────────────────────
+  # ─────────────────────────────────────────────────────────────
+  # JOB 5 — TERRAFORM PLAN (FIXED)
+  # ─────────────────────────────────────────────────────────────
   plan:
+    name: "Terraform Plan"
     runs-on: ubuntu-latest
-    needs: security
-
+    needs: [lint, security-scan]
+    if: github.event_name != 'schedule'
     outputs:
-      has_changes: ${{ steps.plan.outputs.has_changes }}
+      plan_exit_code: ${{ steps.plan.outputs.exitcode }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
-      - name: Create Terraform plugin cache directory
-        run: mkdir -p ~/.terraform.d/plugin-cache
-
-      - name: Cache Terraform providers
-        uses: actions/cache@v4.2.3
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
-          path: ~/.terraform.d/plugin-cache
-          key: terraform-${{ runner.os }}-${{ hashFiles('**/*.tf') }}
-          restore-keys: |
-            terraform-${{ runner.os }}-
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3.1.2
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
+          terraform_version: "~1.7.0"
+          terraform_wrapper: false   # ✅ FIX IMPORTANT
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Terraform Init
-        run: terraform init -input=false -no-color
+      - name: Terraform init
+        run: terraform init
 
-      - name: Terraform Plan
+      - name: Terraform plan
         id: plan
+        env:
+          TF_VAR_ami_id:         ${{ secrets.TF_VAR_ami_id }}
+          TF_VAR_ip_admin:       ${{ secrets.TF_VAR_ip_admin }}
+          TF_VAR_ec2_public_key: ${{ secrets.EC2_PUBLIC_KEY }}
+          TF_VAR_environnement:  ${{ vars.TF_VAR_environnement }}
+          TF_VAR_type_instance:  ${{ vars.TF_VAR_type_instance }}
+          TF_VAR_aws_region:     ${{ vars.AWS_REGION }}
         run: |
           set +e
 
           terraform plan \
             -detailed-exitcode \
-            -parallelism=10 \
-            -out=tfplan \
-            > plan.txt 2>&1
+            -out=agricam-tfplan \
+            -no-color > plan-output.txt 2>&1
 
           EXIT=$?
 
-          set -e
+          echo "exitcode=$EXIT" >> $GITHUB_OUTPUT
 
-          if [ $EXIT -eq 0 ]; then
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-          elif [ $EXIT -eq 2 ]; then
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-          else
-            cat plan.txt
+          cat plan-output.txt
+
+          if [ "$EXIT" -eq 1 ]; then
+            echo "❌ Terraform error"
             exit 1
+          elif [ "$EXIT" -eq 0 ]; then
+            echo "ℹ️ No changes"
+          elif [ "$EXIT" -eq 2 ]; then
+            echo "✅ Changes detected"
           fi
 
-      - name: Upload Terraform plan
+      - name: Upload plan
         uses: actions/upload-artifact@v4
         with:
-          name: tfplan
+          name: agricam-tfplan-${{ github.sha }}
           path: |
-            tfplan
-            plan.txt
+            agricam-tfplan
+            plan-output.txt
+          retention-days: 5
 
-
-  # ─────────────────────────────
-  # 4. DEPLOY
-  # ─────────────────────────────
-  deploy:
+  # ─────────────────────────────────────────────────────────────
+  # JOB 6 — PR COMMENT
+  # ─────────────────────────────────────────────────────────────
+  comment-pr:
+    name: "PR Comment"
     runs-on: ubuntu-latest
-    needs: plan
-
-    if: |
-      github.ref == 'refs/heads/main' &&
-      needs.plan.outputs.has_changes == 'true'
+    needs: [plan]
+    if: github.event_name == 'pull_request'
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Create Terraform plugin cache directory
-        run: mkdir -p ~/.terraform.d/plugin-cache
-
-      - name: Cache Terraform providers
-        uses: actions/cache@v4.2.3
+      - uses: actions/download-artifact@v4
         with:
-          path: ~/.terraform.d/plugin-cache
-          key: terraform-${{ runner.os }}-${{ hashFiles('**/*.tf') }}
-          restore-keys: |
-            terraform-${{ runner.os }}-
+          name: agricam-tfplan-${{ github.sha }}
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3.1.2
+      - uses: actions/github-script@v7
         with:
-          terraform_version: ${{ env.TF_VERSION }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('plan-output.txt', 'utf8');
 
-      - name: Configure AWS credentials
+            const body = [
+              '## Terraform Plan AgriCam',
+              '',
+              '```hcl',
+              plan.substring(0, 55000),
+              '```'
+            ].join('\n');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });
+
+  # ─────────────────────────────────────────────────────────────
+  # JOB 7 — DEPLOY
+  # ─────────────────────────────────────────────────────────────
+  deploy:
+    name: "Deploy Terraform"
+    runs-on: ubuntu-latest
+    needs: [plan]
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.7.0"
+
+      - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Terraform Init
-        run: terraform init -input=false -no-color
+      - run: terraform init
 
-      - name: Download Terraform plan
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
-          name: tfplan
+          name: agricam-tfplan-${{ github.sha }}
 
-      - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+      - name: Terraform apply
+        env:
+          TF_VAR_ami_id: ${{ secrets.TF_VAR_ami_id }}
+          TF_VAR_ip_admin: ${{ secrets.TF_VAR_ip_admin }}
+          TF_VAR_ec2_public_key: ${{ secrets.EC2_PUBLIC_KEY }}
+          TF_VAR_environnement: ${{ vars.TF_VAR_environnement }}
+          TF_VAR_type_instance: ${{ vars.TF_VAR_type_instance }}
+          TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+        run: terraform apply -auto-approve agricam-tfplan
 
-
-  # ─────────────────────────────
-  # 5. DRIFT DETECTION
-  # ─────────────────────────────
-  drift:
+  # ─────────────────────────────────────────────────────────────
+  # JOB 8 — DRIFT DETECTION
+  # ─────────────────────────────────────────────────────────────
+  drift-detection:
+    name: "Drift Detection"
     runs-on: ubuntu-latest
-
     if: github.event_name == 'schedule'
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
-      - name: Create Terraform plugin cache directory
-        run: mkdir -p ~/.terraform.d/plugin-cache
-
-      - name: Cache Terraform providers
-        uses: actions/cache@v4.2.3
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
-          path: ~/.terraform.d/plugin-cache
-          key: terraform-${{ runner.os }}-${{ hashFiles('**/*.tf') }}
-          restore-keys: |
-            terraform-${{ runner.os }}-
+          terraform_version: "~1.7.0"
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3.1.2
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Configure AWS credentials
+      - name: AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Terraform Init
-        run: terraform init -input=false -no-color
+      - run: terraform init
 
-      - name: Drift Detection
+      - name: Drift check
+        id: drift
         run: |
           set +e
 
           terraform plan \
             -detailed-exitcode \
             -refresh=true \
-            -parallelism=10 \
-            > drift.txt 2>&1
+            -no-color > drift.txt 2>&1
 
           EXIT=$?
 
-          set -e
+          echo "drift_code=$EXIT" >> $GITHUB_OUTPUT
 
           cat drift.txt
 
-          if [ $EXIT -eq 2 ]; then
-            echo "DERIVE DETECTEE"
-            exit 1
+      - name: Summary
+        run: |
+          echo "## Drift Report" >> $GITHUB_STEP_SUMMARY
+          cat drift.txt >> $GITHUB_STEP_SUMMARY
 
-          elif [ $EXIT -eq 1 ]; then
-            echo "Erreur Terraform"
-            exit 1
-
-          else
-            echo "Aucune dérive détectée"
-          fi
+      - name: Fail if drift detected
+        if: steps.drift.outputs.drift_code == '2'
+        run: exit 1
