@@ -137,23 +137,29 @@ jobs:
 
           terraform plan \
             -detailed-exitcode \
+            -parallelism=10 \
             -out=agricam-tfplan \
-            -no-color > plan-output.txt 2>&1
+            > plan.txt 2>&1
 
           EXIT=$?
 
           echo "exitcode=$EXIT" >> $GITHUB_OUTPUT
 
-          cat plan-output.txt
+          set -e
 
-          if [ "$EXIT" -eq 1 ]; then
-            echo "❌ Terraform error"
-            exit 1
-          elif [ "$EXIT" -eq 0 ]; then
+          if [ $EXIT -eq 0 ]; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
             echo "ℹ️ No changes"
-          elif [ "$EXIT" -eq 2 ]; then
+          elif [ $EXIT -eq 2 ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
             echo "✅ Changes detected"
+          else
+            cat plan.txt
+            exit 1
           fi
+
+          # Upload plan log
+          cat plan.txt > plan-output.txt
 
       - name: Upload plan
         uses: actions/upload-artifact@v4
