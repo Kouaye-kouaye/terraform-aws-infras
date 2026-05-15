@@ -13,9 +13,12 @@ env:
   AWS_REGION: eu-north-1
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+# ─────────────────────────────
+# CONCURRENCY FIX
+# ─────────────────────────────
 concurrency:
   group: agricam-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
 
@@ -54,7 +57,7 @@ jobs:
 
 
   # ─────────────────────────────
-  # PLAN (FIXED + SAFE EXIT CODE)
+  # PLAN
   # ─────────────────────────────
   plan:
     runs-on: ubuntu-latest
@@ -103,7 +106,7 @@ jobs:
           path: |
             tfplan
             plan.txt
-  
+
 
   # ─────────────────────────────
   # DEPLOY
@@ -136,7 +139,7 @@ jobs:
 
 
   # ─────────────────────────────
-  # DRIFT DETECTION (FIXED)
+  # DRIFT DETECTION
   # ─────────────────────────────
   drift:
     runs-on: ubuntu-latest
