@@ -5,7 +5,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="a7a7fe09-82e5-4e6d-afa8-7ff42806c71a" name="Changes" comment="pipeline ci cd terraform pour agricam">
-      <change beforePath="$PROJECT_DIR$/.github/workflows/aws_terraform.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/aws_terraform.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -32,12 +31,12 @@
     &quot;assignee&quot;: &quot;Wanderhin&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/Kouaye-kouaye/terraform-aws-infras.git",
-    "accountId": "4b6bfe43-94d9-485a-b2d9-c9ecc9d532c1"
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/Kouaye-kouaye/terraform-aws-infras.git&quot;,
+    &quot;accountId&quot;: &quot;4b6bfe43-94d9-485a-b2d9-c9ecc9d532c1&quot;
   }
-}]]></component>
+}</component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 3
 }</component>
@@ -67,6 +66,7 @@
 }</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\KOUAYE ORNELLE\Desktop\projet teraform\projet teraform" />
       <recent name="C:\Users\LEUKEFACK CHRISTIAN\Downloads\terraform agri cicd\deploiement terraform infras agricole" />
     </key>
   </component>
@@ -103,7 +103,8 @@
       <workItem from="1778691814512" duration="1856000" />
       <workItem from="1778694028517" duration="1411000" />
       <workItem from="1778817839849" duration="23359000" />
-      <workItem from="1778851824771" duration="1607000" />
+      <workItem from="1778851824771" duration="3582000" />
+      <workItem from="1778855581276" duration="309000" />
     </task>
     <task id="LOCAL-00001" summary="initialisation de l'infras">
       <option name="closed" value="true" />
@@ -238,6 +239,9 @@
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="UnknownFeatures">
+    <option featureType="com.intellij.fileTypeFactory" implementationName="*.tfvars" />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
     <option name="TAB_STATES">
