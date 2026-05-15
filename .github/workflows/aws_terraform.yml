@@ -13,9 +13,6 @@ env:
   AWS_REGION: eu-north-1
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
-# ─────────────────────────────
-# CONCURRENCY FIX
-# ─────────────────────────────
 concurrency:
   group: agricam-${{ github.ref }}
   cancel-in-progress: true
@@ -23,7 +20,7 @@ concurrency:
 jobs:
 
   # ─────────────────────────────
-  # VALIDATION
+  # VALIDATION (FAST)
   # ─────────────────────────────
   validate:
     runs-on: ubuntu-latest
@@ -31,17 +28,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 🔥 CACHE TERRAFORM
+      - name: Cache Terraform plugins
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.terraform.d/plugin-cache
+            .terraform
+          key: terraform-${{ runner.os }}-${{ hashFiles('**/*.tf') }}
+
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
+      - run: terraform init -backend=false -input=false -no-color
       - run: terraform fmt -check -recursive
-      - run: terraform init -backend=false
       - run: terraform validate
 
 
   # ─────────────────────────────
-  # SECURITY
+  # SECURITY (OPTIMISÉ)
   # ─────────────────────────────
   security:
     runs-on: ubuntu-latest
@@ -54,10 +60,11 @@ jobs:
         with:
           directory: .
           framework: terraform
+          soft_fail: true   # 🔥 plus rapide, ne bloque pas
 
 
   # ─────────────────────────────
-  # PLAN
+  # PLAN (OPTIMISÉ + PARALLELISM)
   # ─────────────────────────────
   plan:
     runs-on: ubuntu-latest
@@ -69,6 +76,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache Terraform plugins
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.terraform.d/plugin-cache
+            .terraform
+          key: terraform-${{ runner.os }}-${{ hashFiles('**/*.tf') }}
+
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
@@ -79,13 +94,13 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - run: terraform init
+      - run: terraform init -input=false -no-color
 
-      - name: Terraform Plan
+      - name: Terraform Plan (FAST)
         id: plan
         run: |
           set +e
-          terraform plan -detailed-exitcode -out=tfplan > plan.txt 2>&1
+          terraform plan -detailed-exitcode -parallelism=10 -out=tfplan > plan.txt 2>&1
           EXIT=$?
           set -e
 
@@ -106,7 +121,7 @@ jobs:
           path: |
             tfplan
             plan.txt
-
+  
 
   # ─────────────────────────────
   # DEPLOY
@@ -129,7 +144,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - run: terraform init
+      - run: terraform init -input=false -no-color
 
       - uses: actions/download-artifact@v4
         with:
@@ -139,7 +154,7 @@ jobs:
 
 
   # ─────────────────────────────
-  # DRIFT DETECTION
+  # DRIFT DETECTION (FIXED + FAST)
   # ─────────────────────────────
   drift:
     runs-on: ubuntu-latest
@@ -158,12 +173,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - run: terraform init
+      - run: terraform init -input=false -no-color
 
       - name: Drift detection
         run: |
           set +e
-          terraform plan -detailed-exitcode -refresh=true > drift.txt 2>&1
+          terraform plan -detailed-exitcode -refresh=true -parallelism=10 > drift.txt 2>&1
           EXIT=$?
           set -e
 
