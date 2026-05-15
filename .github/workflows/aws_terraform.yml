@@ -13,10 +13,11 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   TF_VERSION: "~1.7.0"
+  AWS_REGION: eu-north-1
 
 jobs:
+
   code-quality:
     name: "Code Quality (fmt · validate · lint)"
     runs-on: ubuntu-latest
@@ -52,6 +53,7 @@ jobs:
 
       - run: tflint --format compact
 
+
   security:
     name: "Sécurité (Checkov)"
     runs-on: ubuntu-latest
@@ -69,13 +71,14 @@ jobs:
           output_format: cli
           soft_fail: false
 
+
   plan:
     name: "Terraform Plan"
     runs-on: ubuntu-latest
     needs: [security]
     if: github.event_name != 'schedule'
     outputs:
-      has_changes: ${{ steps.plan.outputs.has_changes }}
+      has_changes: ${{ steps.set_output.outputs.has_changes }}
 
     steps:
       - uses: actions/checkout@v4
@@ -90,7 +93,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - run: terraform init
 
@@ -102,9 +105,14 @@ jobs:
           EXIT=${PIPESTATUS[0]}
           set -e
 
-          if [ $EXIT -eq 0 ]; then
+          echo "exit_code=$EXIT" >> $GITHUB_OUTPUT
+
+      - name: "Set output"
+        id: set_output
+        run: |
+          if [ "${{ steps.plan.outputs.exit_code }}" = "0" ]; then
             echo "has_changes=false" >> $GITHUB_OUTPUT
-          elif [ $EXIT -eq 2 ]; then
+          elif [ "${{ steps.plan.outputs.exit_code }}" = "2" ]; then
             echo "has_changes=true" >> $GITHUB_OUTPUT
           else
             exit 1
@@ -116,6 +124,7 @@ jobs:
           path: |
             tfplan
             plan.txt
+
 
   deploy:
     name: "Deploy AWS"
@@ -139,7 +148,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - run: terraform init
 
@@ -148,6 +157,7 @@ jobs:
           name: tfplan
 
       - run: terraform apply -auto-approve tfplan
+
 
   drift-detection:
     name: "Drift detection"
@@ -165,7 +175,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - run: terraform init
 
