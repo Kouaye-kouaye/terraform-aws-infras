@@ -4,9 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a7a7fe09-82e5-4e6d-afa8-7ff42806c71a" name="Changes" comment="pipeline ci cd terraform pour agricam">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-    </list>
+    <list default="true" id="a7a7fe09-82e5-4e6d-afa8-7ff42806c71a" name="Changes" comment="pipeline ci cd terraform pour agricam" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -104,7 +102,7 @@
       <workItem from="1778694028517" duration="1411000" />
       <workItem from="1778817839849" duration="23359000" />
       <workItem from="1778851824771" duration="3582000" />
-      <workItem from="1778855581276" duration="910000" />
+      <workItem from="1778855581276" duration="1374000" />
     </task>
     <task id="LOCAL-00001" summary="initialisation de l'infras">
       <option name="closed" value="true" />

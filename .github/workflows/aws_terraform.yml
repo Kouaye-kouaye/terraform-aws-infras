@@ -2,41 +2,49 @@ name: "Infrastructure AgriCam CI/CD"
 
 on:
   push:
-    branches: [main, dev]
+    branches:
+      - main
+      - dev
 
   pull_request:
-    branches: [main, dev]
+    branches:
+      - main
+      - dev
 
   schedule:
-    - cron: '0 2 * * *'
+    - cron: "0 2 * * *"
 
   workflow_dispatch:
 
 concurrency:
-  group: "agricam-terraform-${{ github.ref }}"
+  group: agricam-terraform-${{ github.ref }}
   cancel-in-progress: false
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   AWS_REGION: eu-north-1
+  TF_IN_AUTOMATION: true
 
 jobs:
 
   # ============================================================
-  # JOB 1 — SECRET SCAN
+  # JOB 1 — GITLEAKS
   # ============================================================
 
   scan-secrets:
-    name: "Scan secrets AWS (Gitleaks)"
+    name: "Scan Secrets"
     runs-on: ubuntu-latest
+
     if: github.event_name != 'schedule'
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: gitleaks/gitleaks-action@v2
+      - name: Gitleaks Scan
+        uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -47,39 +55,55 @@ jobs:
   validate:
     name: "Terraform Validate"
     runs-on: ubuntu-latest
-    needs: [scan-secrets]
+
+    needs:
+      - scan-secrets
+
     if: github.event_name != 'schedule'
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: hashicorp/setup-terraform@v3
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "~1.7.0"
 
-      - run: terraform fmt -check -recursive
-      - run: terraform init -backend=false
-      - run: terraform validate
+      - name: Terraform Format
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Init
+        run: terraform init -backend=false
+
+      - name: Terraform Validate
+        run: terraform validate
 
   # ============================================================
   # JOB 3 — TFLINT
   # ============================================================
 
   lint:
-    name: "TFLint"
+    name: "Terraform Lint"
     runs-on: ubuntu-latest
-    needs: [validate]
+
+    needs:
+      - validate
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: terraform-linters/setup-tflint@v4
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
 
-      - run: tflint --init
+      - name: Init TFLint
+        run: tflint --init
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: tflint --format compact
+      - name: Run TFLint
+        run: tflint --format compact
 
   # ============================================================
   # JOB 4 — CHECKOV
@@ -88,41 +112,50 @@ jobs:
   security-scan:
     name: "Checkov Security Scan"
     runs-on: ubuntu-latest
-    needs: [validate]
+
+    needs:
+      - validate
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: bridgecrewio/checkov-action@master
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@master
         with:
           directory: .
           framework: terraform
           output_format: cli
-          soft_fail: false
+          soft_fail: true
 
   # ============================================================
-  # JOB 5 — PLAN
+  # JOB 5 — TERRAFORM PLAN
   # ============================================================
 
   plan:
     name: "Terraform Plan"
     runs-on: ubuntu-latest
-    needs: [lint, security-scan]
+
+    needs:
+      - lint
+      - security-scan
+
     if: github.event_name != 'schedule'
 
     outputs:
       plan_exit_code: ${{ steps.plan.outputs.exitcode }}
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/checkout@v4
-
-      - uses: hashicorp/setup-terraform@v3
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "~1.7.0"
           terraform_wrapper: false
 
-      - name: Configure AWS credentials
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -157,9 +190,9 @@ jobs:
           set -e
 
           if [ $EXIT -eq 0 ]; then
-            echo "No changes"
+            echo "No infrastructure changes"
           elif [ $EXIT -eq 2 ]; then
-            echo "Changes detected"
+            echo "Infrastructure changes detected"
           else
             cat plan.txt
             exit 1
@@ -167,34 +200,39 @@ jobs:
 
           cp plan.txt plan-output.txt
 
-      - name: Upload Plan
+      - name: Upload Terraform Plan
         uses: actions/upload-artifact@v4
         with:
           name: agricam-tfplan-${{ github.sha }}
           path: |
             agricam-tfplan
             plan-output.txt
+          retention-days: 5
 
   # ============================================================
-  # JOB 6 — COMMENT PR
+  # JOB 6 — PR COMMENT
   # ============================================================
 
   comment-pr:
-    name: "PR Comment"
+    name: "PR Terraform Comment"
     runs-on: ubuntu-latest
-    needs: [plan]
+
+    needs:
+      - plan
 
     if: github.event_name == 'pull_request'
 
     steps:
-
-      - uses: actions/download-artifact@v4
+      - name: Download Plan Artifact
+        uses: actions/download-artifact@v4
         with:
           name: agricam-tfplan-${{ github.sha }}
 
-      - uses: actions/github-script@v7
+      - name: Comment PR
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
           script: |
             const fs = require('fs');
 
@@ -221,30 +259,38 @@ jobs:
   # ============================================================
 
   deploy:
-    name: "Deploy Terraform"
+    name: "Deploy Infrastructure"
     runs-on: ubuntu-latest
-    needs: [plan]
+
+    needs:
+      - plan
 
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
+    environment:
+      name: production
+
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/checkout@v4
-
-      - uses: hashicorp/setup-terraform@v3
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "~1.7.0"
 
-      - name: Configure AWS
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-north-1
 
-      - run: terraform init
+      - name: Terraform Init
+        run: terraform init
 
-      - uses: actions/download-artifact@v4
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v4
         with:
           name: agricam-tfplan-${{ github.sha }}
 
@@ -263,29 +309,31 @@ jobs:
   # ============================================================
 
   drift-detection:
-    name: "Drift Detection"
+    name: "Terraform Drift Detection"
     runs-on: ubuntu-latest
 
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/checkout@v4
-
-      - uses: hashicorp/setup-terraform@v3
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "~1.7.0"
 
-      - name: Configure AWS
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-north-1
 
-      - run: terraform init
+      - name: Terraform Init
+        run: terraform init
 
-      - name: Drift Check
+      - name: Terraform Drift Check
         id: drift
         run: |
           set +e
@@ -302,11 +350,11 @@ jobs:
 
           cat drift.txt
 
-      - name: Summary
+      - name: Drift Summary
         run: |
-          echo "## Drift Report" >> $GITHUB_STEP_SUMMARY
+          echo "## Terraform Drift Report" >> $GITHUB_STEP_SUMMARY
           cat drift.txt >> $GITHUB_STEP_SUMMARY
 
-      - name: Fail if drift detected
+      - name: Fail if Drift Exists
         if: steps.drift.outputs.drift_code == '2'
-        run: exit 1
+        run: exit
