@@ -35,14 +35,12 @@ jobs:
 
   # ─────────────────────────────────────────────────────────────
   # JOB 2 — VALIDATION
-  # FIX : condition explicite pour ne pas hériter du skip de scan-secrets
   # ─────────────────────────────────────────────────────────────
   validate:
     name: "Format & Validation Terraform"
     runs-on: ubuntu-latest
     needs: [scan-secrets]
-    # FIX : on vérifie explicitement que scan-secrets a réussi
-    if: github.event_name != 'schedule' && needs.scan-secrets.result == 'success'
+    if: github.event_name != 'schedule'
 
     steps:
       - uses: actions/checkout@v4
@@ -58,14 +56,11 @@ jobs:
 
   # ─────────────────────────────────────────────────────────────
   # JOB 3 — LINT
-  # FIX : condition explicite pour ne pas hériter du skip de validate
   # ─────────────────────────────────────────────────────────────
   lint:
     name: "TFLint"
     runs-on: ubuntu-latest
     needs: [validate]
-    # FIX : condition explicite obligatoire
-    if: needs.validate.result == 'success'
 
     steps:
       - uses: actions/checkout@v4
@@ -82,14 +77,11 @@ jobs:
 
   # ─────────────────────────────────────────────────────────────
   # JOB 4 — SECURITY
-  # FIX : condition explicite pour ne pas hériter du skip de validate
   # ─────────────────────────────────────────────────────────────
   security-scan:
     name: "Checkov Security Scan"
     runs-on: ubuntu-latest
     needs: [validate]
-    # FIX : condition explicite obligatoire
-    if: needs.validate.result == 'success'
 
     steps:
       - uses: actions/checkout@v4
@@ -102,18 +94,13 @@ jobs:
           soft_fail: false
 
   # ─────────────────────────────────────────────────────────────
-  # JOB 5 — TERRAFORM PLAN
-  # FIX : condition explicite sur les résultats des jobs parents
+  # JOB 5 — TERRAFORM PLAN (FIXED)
   # ─────────────────────────────────────────────────────────────
   plan:
     name: "Terraform Plan"
     runs-on: ubuntu-latest
     needs: [lint, security-scan]
-    # FIX : condition complète — event + résultats des deux parents
-    if: |
-      github.event_name != 'schedule' &&
-      needs.lint.result == 'success' &&
-      needs.security-scan.result == 'success'
+    if: github.event_name != 'schedule'
     outputs:
       plan_exit_code: ${{ steps.plan.outputs.exitcode }}
 
@@ -124,7 +111,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "~1.7.0"
-          terraform_wrapper: false   # ✅ FIX — nécessaire pour récupérer l'exit code
+          terraform_wrapper: false   # ✅ FIX IMPORTANT
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -171,6 +158,7 @@ jobs:
             exit 1
           fi
 
+          # Upload plan log
           cat plan.txt > plan-output.txt
 
       - name: Upload plan
@@ -189,7 +177,7 @@ jobs:
     name: "PR Comment"
     runs-on: ubuntu-latest
     needs: [plan]
-    if: github.event_name == 'pull_request' && needs.plan.result == 'success'
+    if: github.event_name == 'pull_request'
 
     steps:
       - uses: actions/download-artifact@v4
@@ -220,17 +208,12 @@ jobs:
 
   # ─────────────────────────────────────────────────────────────
   # JOB 7 — DEPLOY
-  # FIX : condition explicite sur le résultat de plan
   # ─────────────────────────────────────────────────────────────
   deploy:
     name: "Deploy Terraform"
     runs-on: ubuntu-latest
     needs: [plan]
-    # FIX : condition complète — branche + event + résultat du plan
-    if: |
-      github.ref == 'refs/heads/master' &&
-      github.event_name == 'push' &&
-      needs.plan.result == 'success'
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
 
     steps:
       - uses: actions/checkout@v4
@@ -255,12 +238,12 @@ jobs:
 
       - name: Terraform apply
         env:
-          TF_VAR_ami_id:         ${{ secrets.TF_VAR_ami_id }}
-          TF_VAR_ip_admin:       ${{ secrets.TF_VAR_ip_admin }}
+          TF_VAR_ami_id: ${{ secrets.TF_VAR_ami_id }}
+          TF_VAR_ip_admin: ${{ secrets.TF_VAR_ip_admin }}
           TF_VAR_ec2_public_key: ${{ secrets.EC2_PUBLIC_KEY }}
-          TF_VAR_environnement:  ${{ vars.TF_VAR_environnement }}
-          TF_VAR_type_instance:  ${{ vars.TF_VAR_type_instance }}
-          TF_VAR_aws_region:     ${{ vars.AWS_REGION }}
+          TF_VAR_environnement: ${{ vars.TF_VAR_environnement }}
+          TF_VAR_type_instance: ${{ vars.TF_VAR_type_instance }}
+          TF_VAR_aws_region: ${{ vars.AWS_REGION }}
         run: terraform apply -auto-approve agricam-tfplan
 
   # ─────────────────────────────────────────────────────────────
