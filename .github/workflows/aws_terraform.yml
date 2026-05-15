@@ -12,6 +12,7 @@ env:
   TF_VERSION: "~1.7.0"
   AWS_REGION: eu-north-1
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # CORRECTION 1 : forcer Terraform à utiliser le dossier de cache
   TF_PLUGIN_CACHE_DIR: ~/.terraform.d/plugin-cache
 
 concurrency:
@@ -29,6 +30,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # CORRECTION 1 : créer le dossier de cache AVANT d'activer le cache
+      # Sans ça, actions/cache ne trouve rien à sauvegarder → toujours un MISS
       - name: Créer le dossier plugin-cache
         run: mkdir -p ~/.terraform.d/plugin-cache
 
@@ -50,7 +53,7 @@ jobs:
 
 
   # ─────────────────────────────
-  # 2. SECURITY — Trivy (rapide, pas de Docker pull)
+  # 2. SECURITY
   # ─────────────────────────────
   security:
     runs-on: ubuntu-latest
@@ -59,15 +62,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Trivy s'installe en ~5s via le binaire GitHub, pas d'image Docker
-      - name: Installer Trivy
-        uses: aquasecurity/trivy-action@0.30.0
+      # CORRECTION 2 : tag fixe au lieu de @master
+      # @master retélécharge la dernière image Docker à chaque run (+30-60s)
+      - uses: bridgecrewio/checkov-action@v12
         with:
-          scan-type: config
-          scan-ref: .
-          format: table
-          exit-code: 0          # ne bloque pas le pipeline sur les warnings
-          severity: HIGH,CRITICAL
+          directory: .
+          framework: terraform
+          soft_fail: true
 
 
   # ─────────────────────────────
@@ -104,6 +105,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # Avec le cache, init ne retélécharge plus les providers
       - run: terraform init -input=false -no-color
 
       - name: Terraform Plan
@@ -163,6 +165,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # CORRECTION 3 : init AVANT download artifact (avec cache = quasi instantané)
       - run: terraform init -input=false -no-color
 
       - uses: actions/download-artifact@v4
