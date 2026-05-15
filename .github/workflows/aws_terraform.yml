@@ -2,9 +2,9 @@ name: "Infrastructure AgriCam CI/CD"
 
 on:
   push:
-    branches: [master, dev]
+    branches: [main, dev]
   pull_request:
-    branches: [master]
+    branches: [main, dev]
   schedule:
     - cron: '0 2 * * *'
 
@@ -143,7 +143,19 @@ jobs:
           EXIT=$?
 
           echo "exitcode=$EXIT" >> $GITHUB_OUTPUT
-          
+
+          set -e
+
+          if [ $EXIT -eq 0 ]; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No changes"
+          elif [ $EXIT -eq 2 ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "✅ Changes detected"
+          else
+            cat plan.txt
+            exit 1
+          fi
 
           # Upload plan log
           cat plan.txt > plan-output.txt
