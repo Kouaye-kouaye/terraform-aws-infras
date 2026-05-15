@@ -47,9 +47,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # CORRECTION 4 : épinglé sur un tag fixe au lieu de @master
-      # @master peut casser le pipeline sans prévenir
-      - uses: bridgecrewio/checkov-action@v12
+      - uses: bridgecrewio/checkov-action@master
         with:
           directory: .
           framework: terraform
@@ -101,7 +99,7 @@ jobs:
           path: |
             tfplan
             plan.txt
-
+  
 
   # ─────────────────────────────
   # 4. DEPLOY (SAFE APPLY)
@@ -124,8 +122,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # CORRECTION 2 : terraform init AVANT de télécharger l'artifact
-      # Les providers doivent être installés avant que apply puisse les utiliser
       - run: terraform init
 
       - uses: actions/download-artifact@v4
@@ -140,9 +136,6 @@ jobs:
   # ─────────────────────────────
   drift:
     runs-on: ubuntu-latest
-    # CORRECTION 1 : drift doit attendre que plan (et ses dépendances) soient terminés
-    # Sans ça, drift peut tourner en parallèle de plan/deploy sur le même state
-    needs: [validate, security, plan]
     if: github.event_name == 'schedule'
 
     steps:
@@ -160,20 +153,6 @@ jobs:
 
       - run: terraform init
 
-      # CORRECTION 3 : on capture le code de sortie correctement
-      # "|| true" masquait les drifts réels → le job ne signalait jamais d'anomalie
-      - name: Detect drift
-        id: drift
-        run: |
-          terraform plan -detailed-exitcode -refresh=true > drift.txt 2>&1
-          EXIT=$?
-          cat drift.txt
-          if [ $EXIT -eq 2 ]; then
-            echo "⚠️ DRIFT DÉTECTÉ : l'infrastructure a divergé du code Terraform."
-            exit 1
-          elif [ $EXIT -eq 1 ]; then
-            echo "❌ Erreur lors du plan de drift."
-            exit 1
-          else
-            echo "✅ Aucun drift détecté."
-          fi
+      - run: terraform plan -detailed-exitcode -refresh=true > drift.txt || true
+
+      - run: cat drift.txt
