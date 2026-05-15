@@ -3,16 +3,17 @@ name: "Infrastructure AgriCam — Terraform CI/CD"
 on:
   push:
     branches: [main, dev]
+
   pull_request:
     branches: [main]
+
   schedule:
     - cron: '0 2 * * *'
 
 env:
-  TF_VERSION: "~1.7.0"
+  TF_VERSION: "1.7.5"
   AWS_REGION: eu-north-1
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  # CORRECTION 1 : forcer Terraform à utiliser le dossier de cache
   TF_PLUGIN_CACHE_DIR: ~/.terraform.d/plugin-cache
 
 concurrency:
@@ -28,43 +29,48 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v5
 
-      # CORRECTION 1 : créer le dossier de cache AVANT d'activer le cache
-      # Sans ça, actions/cache ne trouve rien à sauvegarder → toujours un MISS
-      - name: Créer le dossier plugin-cache
+      - name: Create Terraform plugin cache directory
         run: mkdir -p ~/.terraform.d/plugin-cache
 
-      - name: Cache providers Terraform
-        uses: actions/cache@v4
+      - name: Cache Terraform providers
+        uses: actions/cache@v4.2.3
         with:
           path: ~/.terraform.d/plugin-cache
-          key: tf-providers-${{ runner.os }}-${{ hashFiles('**/*.tf') }}
+          key: terraform-${{ runner.os }}-${{ hashFiles('**/*.tf') }}
           restore-keys: |
-            tf-providers-${{ runner.os }}-
+            terraform-${{ runner.os }}-
 
-      - uses: hashicorp/setup-terraform@v3
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3.1.2
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
-      - run: terraform init -backend=false -input=false -no-color
-      - run: terraform fmt -check -recursive
-      - run: terraform validate
+      - name: Terraform Init
+        run: terraform init -backend=false -input=false -no-color
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Validate
+        run: terraform validate
 
 
   # ─────────────────────────────
-  # 2. SECURITY
+  # 2. SECURITY SCAN
   # ─────────────────────────────
   security:
     runs-on: ubuntu-latest
     needs: validate
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v5
 
-      # CORRECTION 2 : tag fixe au lieu de @master
-      # @master retélécharge la dernière image Docker à chaque run (+30-60s)
-      - uses: bridgecrewio/checkov-action@v12
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@v12
         with:
           directory: .
           framework: terraform
@@ -72,7 +78,7 @@ jobs:
 
 
   # ─────────────────────────────
-  # 3. PLAN
+  # 3. TERRAFORM PLAN
   # ─────────────────────────────
   plan:
     runs-on: ubuntu-latest
@@ -82,38 +88,48 @@ jobs:
       has_changes: ${{ steps.plan.outputs.has_changes }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v5
 
-      - name: Créer le dossier plugin-cache
+      - name: Create Terraform plugin cache directory
         run: mkdir -p ~/.terraform.d/plugin-cache
 
-      - name: Cache providers Terraform
-        uses: actions/cache@v4
+      - name: Cache Terraform providers
+        uses: actions/cache@v4.2.3
         with:
           path: ~/.terraform.d/plugin-cache
-          key: tf-providers-${{ runner.os }}-${{ hashFiles('**/*.tf') }}
+          key: terraform-${{ runner.os }}-${{ hashFiles('**/*.tf') }}
           restore-keys: |
-            tf-providers-${{ runner.os }}-
+            terraform-${{ runner.os }}-
 
-      - uses: hashicorp/setup-terraform@v3
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3.1.2
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
-      - uses: aws-actions/configure-aws-credentials@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # Avec le cache, init ne retélécharge plus les providers
-      - run: terraform init -input=false -no-color
+      - name: Terraform Init
+        run: terraform init -input=false -no-color
 
       - name: Terraform Plan
         id: plan
         run: |
           set +e
-          terraform plan -detailed-exitcode -parallelism=10 -out=tfplan > plan.txt 2>&1
+
+          terraform plan \
+            -detailed-exitcode \
+            -parallelism=10 \
+            -out=tfplan \
+            > plan.txt 2>&1
+
           EXIT=$?
+
           set -e
 
           if [ $EXIT -eq 0 ]; then
@@ -125,7 +141,8 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload Terraform plan
+        uses: actions/upload-artifact@v4
         with:
           name: tfplan
           path: |
@@ -139,89 +156,112 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: plan
-    if: github.ref == 'refs/heads/main' && needs.plan.outputs.has_changes == 'true'
+
+    if: |
+      github.ref == 'refs/heads/main' &&
+      needs.plan.outputs.has_changes == 'true'
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v5
 
-      - name: Créer le dossier plugin-cache
+      - name: Create Terraform plugin cache directory
         run: mkdir -p ~/.terraform.d/plugin-cache
 
-      - name: Cache providers Terraform
-        uses: actions/cache@v4
+      - name: Cache Terraform providers
+        uses: actions/cache@v4.2.3
         with:
           path: ~/.terraform.d/plugin-cache
-          key: tf-providers-${{ runner.os }}-${{ hashFiles('**/*.tf') }}
+          key: terraform-${{ runner.os }}-${{ hashFiles('**/*.tf') }}
           restore-keys: |
-            tf-providers-${{ runner.os }}-
+            terraform-${{ runner.os }}-
 
-      - uses: hashicorp/setup-terraform@v3
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3.1.2
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
-      - uses: aws-actions/configure-aws-credentials@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # CORRECTION 3 : init AVANT download artifact (avec cache = quasi instantané)
-      - run: terraform init -input=false -no-color
+      - name: Terraform Init
+        run: terraform init -input=false -no-color
 
-      - uses: actions/download-artifact@v4
+      - name: Download Terraform plan
+        uses: actions/download-artifact@v4
         with:
           name: tfplan
 
-      - run: terraform apply -auto-approve tfplan
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
 
 
   # ─────────────────────────────
-  # 5. DRIFT (SCHEDULE ONLY)
+  # 5. DRIFT DETECTION
   # ─────────────────────────────
   drift:
     runs-on: ubuntu-latest
-    needs: [validate, security, plan]
+
     if: github.event_name == 'schedule'
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v5
 
-      - name: Créer le dossier plugin-cache
+      - name: Create Terraform plugin cache directory
         run: mkdir -p ~/.terraform.d/plugin-cache
 
-      - name: Cache providers Terraform
-        uses: actions/cache@v4
+      - name: Cache Terraform providers
+        uses: actions/cache@v4.2.3
         with:
           path: ~/.terraform.d/plugin-cache
-          key: tf-providers-${{ runner.os }}-${{ hashFiles('**/*.tf') }}
+          key: terraform-${{ runner.os }}-${{ hashFiles('**/*.tf') }}
           restore-keys: |
-            tf-providers-${{ runner.os }}-
+            terraform-${{ runner.os }}-
 
-      - uses: hashicorp/setup-terraform@v3
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3.1.2
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
-      - uses: aws-actions/configure-aws-credentials@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - run: terraform init -input=false -no-color
+      - name: Terraform Init
+        run: terraform init -input=false -no-color
 
-      - name: Détection de drift
+      - name: Drift Detection
         run: |
           set +e
-          terraform plan -detailed-exitcode -refresh=true -parallelism=10 > drift.txt 2>&1
+
+          terraform plan \
+            -detailed-exitcode \
+            -refresh=true \
+            -parallelism=10 \
+            > drift.txt 2>&1
+
           EXIT=$?
+
           set -e
+
           cat drift.txt
+
           if [ $EXIT -eq 2 ]; then
             echo "DERIVE DETECTEE"
             exit 1
+
           elif [ $EXIT -eq 1 ]; then
-            echo "Erreur lors du plan"
+            echo "Erreur Terraform"
             exit 1
+
           else
-            echo "Aucun drift detecte"
+            echo "Aucune dérive détectée"
           fi
