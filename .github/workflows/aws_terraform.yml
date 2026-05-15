@@ -28,13 +28,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: "Gitleaks — Scan de secrets"
-        uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: "Setup Terraform"
-        uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
@@ -42,8 +40,7 @@ jobs:
       - run: terraform init -backend=false
       - run: terraform validate
 
-      - name: "Setup TFLint"
-        uses: terraform-linters/setup-tflint@v4
+      - uses: terraform-linters/setup-tflint@v4
         with:
           tflint_version: latest
 
@@ -63,8 +60,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: "Checkov"
-        uses: bridgecrewio/checkov-action@master
+      - uses: bridgecrewio/checkov-action@master
         with:
           directory: .
           framework: terraform
@@ -78,41 +74,42 @@ jobs:
     needs: [security]
     if: github.event_name != 'schedule'
     outputs:
-      has_changes: ${{ steps.set_output.outputs.has_changes }}
+      has_changes: ${{ steps.out.outputs.has_changes }}
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: "Setup Terraform"
-        uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
-      - name: "AWS credentials"
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # 🔥 DEBUG CRUCIAL
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
       - run: terraform init
 
-      - name: "terraform plan"
+      - name: Terraform Plan
         id: plan
         run: |
           set +e
           terraform plan -detailed-exitcode -out=tfplan -no-color 2>&1 | tee plan.txt
-          EXIT=${PIPESTATUS[0]}
+          EXIT=$?
           set -e
+          echo "exit=$EXIT" >> $GITHUB_OUTPUT
 
-          echo "exit_code=$EXIT" >> $GITHUB_OUTPUT
-
-      - name: "Set output"
-        id: set_output
+      - name: Set output
+        id: out
         run: |
-          if [ "${{ steps.plan.outputs.exit_code }}" = "0" ]; then
+          if [ "${{ steps.plan.outputs.exit }}" = "0" ]; then
             echo "has_changes=false" >> $GITHUB_OUTPUT
-          elif [ "${{ steps.plan.outputs.exit_code }}" = "2" ]; then
+          elif [ "${{ steps.plan.outputs.exit }}" = "2" ]; then
             echo "has_changes=true" >> $GITHUB_OUTPUT
           else
             exit 1
@@ -138,17 +135,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: "Terraform"
-        uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
-      - name: "AWS credentials"
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - run: aws sts get-caller-identity
 
       - run: terraform init
 
@@ -176,6 +173,8 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - run: aws sts get-caller-identity
 
       - run: terraform init
 
