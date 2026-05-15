@@ -12,6 +12,8 @@ env:
   TF_VERSION: "~1.7.0"
   AWS_REGION: eu-north-1
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # CORRECTION 1 : forcer Terraform à utiliser le dossier de cache
+  TF_PLUGIN_CACHE_DIR: ~/.terraform.d/plugin-cache
 
 concurrency:
   group: agricam-${{ github.ref }}
@@ -20,7 +22,7 @@ concurrency:
 jobs:
 
   # ─────────────────────────────
-  # VALIDATION (FAST)
+  # 1. VALIDATION
   # ─────────────────────────────
   validate:
     runs-on: ubuntu-latest
@@ -28,14 +30,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 🔥 CACHE TERRAFORM
-      - name: Cache Terraform plugins
+      # CORRECTION 1 : créer le dossier de cache AVANT d'activer le cache
+      # Sans ça, actions/cache ne trouve rien à sauvegarder → toujours un MISS
+      - name: Créer le dossier plugin-cache
+        run: mkdir -p ~/.terraform.d/plugin-cache
+
+      - name: Cache providers Terraform
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.terraform.d/plugin-cache
-            .terraform
-          key: terraform-${{ runner.os }}-${{ hashFiles('**/*.tf') }}
+          path: ~/.terraform.d/plugin-cache
+          key: tf-providers-${{ runner.os }}-${{ hashFiles('**/*.tf') }}
+          restore-keys: |
+            tf-providers-${{ runner.os }}-
 
       - uses: hashicorp/setup-terraform@v3
         with:
@@ -47,7 +53,7 @@ jobs:
 
 
   # ─────────────────────────────
-  # SECURITY (OPTIMISÉ)
+  # 2. SECURITY
   # ─────────────────────────────
   security:
     runs-on: ubuntu-latest
@@ -56,15 +62,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: bridgecrewio/checkov-action@master
+      # CORRECTION 2 : tag fixe au lieu de @master
+      # @master retélécharge la dernière image Docker à chaque run (+30-60s)
+      - uses: bridgecrewio/checkov-action@v12
         with:
           directory: .
           framework: terraform
-          soft_fail: true   # 🔥 plus rapide, ne bloque pas
+          soft_fail: true
 
 
   # ─────────────────────────────
-  # PLAN (OPTIMISÉ + PARALLELISM)
+  # 3. PLAN
   # ─────────────────────────────
   plan:
     runs-on: ubuntu-latest
@@ -76,13 +84,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache Terraform plugins
+      - name: Créer le dossier plugin-cache
+        run: mkdir -p ~/.terraform.d/plugin-cache
+
+      - name: Cache providers Terraform
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.terraform.d/plugin-cache
-            .terraform
-          key: terraform-${{ runner.os }}-${{ hashFiles('**/*.tf') }}
+          path: ~/.terraform.d/plugin-cache
+          key: tf-providers-${{ runner.os }}-${{ hashFiles('**/*.tf') }}
+          restore-keys: |
+            tf-providers-${{ runner.os }}-
 
       - uses: hashicorp/setup-terraform@v3
         with:
@@ -94,17 +105,16 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # Avec le cache, init ne retélécharge plus les providers
       - run: terraform init -input=false -no-color
 
-      - name: Terraform Plan (FAST)
+      - name: Terraform Plan
         id: plan
         run: |
           set +e
           terraform plan -detailed-exitcode -parallelism=10 -out=tfplan > plan.txt 2>&1
           EXIT=$?
           set -e
-
-          echo "exitcode=$EXIT" >> $GITHUB_OUTPUT
 
           if [ $EXIT -eq 0 ]; then
             echo "has_changes=false" >> $GITHUB_OUTPUT
@@ -121,10 +131,10 @@ jobs:
           path: |
             tfplan
             plan.txt
-  
+
 
   # ─────────────────────────────
-  # DEPLOY
+  # 4. DEPLOY
   # ─────────────────────────────
   deploy:
     runs-on: ubuntu-latest
@@ -133,6 +143,17 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Créer le dossier plugin-cache
+        run: mkdir -p ~/.terraform.d/plugin-cache
+
+      - name: Cache providers Terraform
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: tf-providers-${{ runner.os }}-${{ hashFiles('**/*.tf') }}
+          restore-keys: |
+            tf-providers-${{ runner.os }}-
 
       - uses: hashicorp/setup-terraform@v3
         with:
@@ -144,6 +165,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # CORRECTION 3 : init AVANT download artifact (avec cache = quasi instantané)
       - run: terraform init -input=false -no-color
 
       - uses: actions/download-artifact@v4
@@ -154,14 +176,26 @@ jobs:
 
 
   # ─────────────────────────────
-  # DRIFT DETECTION (FIXED + FAST)
+  # 5. DRIFT (SCHEDULE ONLY)
   # ─────────────────────────────
   drift:
     runs-on: ubuntu-latest
+    needs: [validate, security, plan]
     if: github.event_name == 'schedule'
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Créer le dossier plugin-cache
+        run: mkdir -p ~/.terraform.d/plugin-cache
+
+      - name: Cache providers Terraform
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: tf-providers-${{ runner.os }}-${{ hashFiles('**/*.tf') }}
+          restore-keys: |
+            tf-providers-${{ runner.os }}-
 
       - uses: hashicorp/setup-terraform@v3
         with:
@@ -175,22 +209,19 @@ jobs:
 
       - run: terraform init -input=false -no-color
 
-      - name: Drift detection
+      - name: Détection de drift
         run: |
           set +e
           terraform plan -detailed-exitcode -refresh=true -parallelism=10 > drift.txt 2>&1
           EXIT=$?
           set -e
-
-          echo "exitcode=$EXIT"
-
-          if [ $EXIT -eq 0 ]; then
-            echo "Aucune dérive"
-          elif [ $EXIT -eq 2 ]; then
+          cat drift.txt
+          if [ $EXIT -eq 2 ]; then
             echo "DERIVE DETECTEE"
-            cat drift.txt
+            exit 1
+          elif [ $EXIT -eq 1 ]; then
+            echo "Erreur lors du plan"
             exit 1
           else
-            cat drift.txt
-            exit 1
+            echo "Aucun drift detecte"
           fi
